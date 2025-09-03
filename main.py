@@ -22,6 +22,10 @@ class GenshinDiscordBot(commands.AutoShardedBot):
             command_prefix=commands.when_mentioned_or("$"),
             intents=intents,
             application_id=config.application_id,
+            allowed_contexts=discord.app_commands.AppCommandContext(
+                guild=True, dm_channel=True, private_channel=True
+            ),
+            allowed_installs=discord.app_commands.AppInstallationType(guild=True, user=True),
         )
 
     async def setup_hook(self) -> None:
@@ -32,7 +36,7 @@ class GenshinDiscordBot(commands.AutoShardedBot):
         await database.Database.init()
 
         # 初始化 genshin api 角色名字
-        await genshin.utility.update_characters_ambr(["zh-tw"])
+        await genshin.utility.update_characters_enka(["zh-tw"])
 
         # 從 cogs 資料夾載入所有 cog
         for filepath in Path("./cogs").glob("**/*cog.py"):
@@ -45,11 +49,12 @@ class GenshinDiscordBot(commands.AutoShardedBot):
             cog_name = Path(filepath).stem
             await self.load_extension(f"cogs_external.{cog_name}")
 
-        # 同步Slash commands到測試伺服器，全域伺服器用 /sync 指令
+        # 同步 Slash commands
         if config.test_server_id is not None:
             test_guild = discord.Object(id=config.test_server_id)
             self.tree.copy_global_to(guild=test_guild)
             await self.tree.sync(guild=test_guild)
+        await self.tree.sync()
 
         # 啟動 Prometheus Server
         if config.prometheus_server_port is not None:
